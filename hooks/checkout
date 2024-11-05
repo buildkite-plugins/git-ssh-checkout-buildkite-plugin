@@ -2,6 +2,11 @@
 
 set -euo pipefail
 
+# A small helper to convert the provided repository URL to be local filesystem path compatible.
+dir_for_repository() {
+  return $(echo "${1}" | sed 's/[^a-zA-Z0-9]/-/')
+}
+
 DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
 
 # shellcheck source=lib/plugin.bash
@@ -19,30 +24,74 @@ echo " - repository-url: ${REPOSITORY_URL_OPTION}"
 echo " - ssh-secret-key-name: ${SSH_SECRET_KEY_NAME_OPTION}"
 echo " - checkout-path: ${CHECKOUT_PATH_OPTION}"
 
+# Using the provided flags
+GIT_CHECKOUT_FLAGS="${BUILDKITE_GIT_CHECKOUT_FLAGS:--f}"
+GIT_FETCH_FLAGS="${BUILDKITE_GIT_FETCH_FLAGS:--v --prune}"
+
+# Allowing for git mirrors to be supported
+#
+# The path here is defined via the mirror rather than the provided plugin option
+GIT_MIRRORS_PATH="${BUILDKITE_GIT_MIRRORS_PATH:-}"
+GIT_MIRRORS_SKIP_UPDATE="${BUILDKITE_GIT_MIRRORS_SKIP_UPDATE:-false}"
+GIT_MIRRORS_CLONE_FLAGS="${BUILDKITE_GIT_MIRRORS_CLONE_FLAGS:--v}"
+
 if [ "${DRY_RUN}" != "true" ]; then
   # Populate the key file from the secret value
   buildkite-agent secret get "${SSH_SECRET_KEY_NAME_OPTION}" | tr -d '\015' > "${KEY_NAME}"
   chmod 0400 "${KEY_NAME}"
 
-  # Clone the repository
-  git clone "${REPOSITORY_URL_OPTION}" "${CHECKOUT_PATH_OPTION}" \
-    --config core.sshCommand="ssh -i ${KEY_NAME} -o StrictHostKeyChecking=no -y"
+  # Handle the usage of git mirrors
+  if [ "${GIT_MIRRORS_PATH}" != "" ]; then
+    MIRROR_PATH_NAME=$(dir_for_repository "${REPOSITORY_URL_OPTION}")
+    FULL_MIRROR_DIR="${GIT_MIRRORS_PATH}/${MIRROR_PATH_NAME}"
+    if [ "${GIT_MIRRORS_SKIP_UPDATE}" = "true" ]; then
+      # Proceed if the mirror exists already
+      if [ ! -d "${FULL_MIRROR_DIR}" ]; then
+        echo "No existing mirror found for repository ${REPOSITORY_URL_OPTION} at ${GIT_MIRRORS_PATH}"
+        FULL_MIRROR_DIR=""
+      fi
+    else
+      # Update the content
+      if [ ! -d "${FULL_MIRROR_DIR}" ]; then
+        # Fresh clone required
+        git clone "${REPOSITORY_URL_OPTION}" "${FULL_MIRROR_DIR}" \
+          --config core.sshCommand="ssh -i ${KEY_NAME} -o StrictHostKeyChecking=no -y" \
+          --mirror "${GIT_MIRRORS_CLONE_FLAGS}"
+        if [ "$?" -ne 0 ]; then
+          FULL_MIRROR_DIR=""
+        fi
+      else
+        # Update existing clone
+        git --git-dir "${FULL_MIRROR_DIR}" "${GIT_FETCH_FLAGS}" fetch origin "${BUILDKITE_BRANCH}"
+      fi
+    fi
 
-  cd "${CHECKOUT_PATH_OPTION}"
+    if [ "${FULL_MIRROR_DIR}" = "" ]; then
+      echo "Using the git mirror has not succeeded."
+      exit 1
+    fi
 
-  # Clean up the clone
-  git clean -ffxdq
+  else
+    # Clone the repository
+    git clone "${REPOSITORY_URL_OPTION}" "${CHECKOUT_PATH_OPTION}" \
+      --config core.sshCommand="ssh -i ${KEY_NAME} -o StrictHostKeyChecking=no -y"
 
-  # Checkout the branch
-  if [ "${BUILDKITE_BRANCH:-}" != "" ]; then
-    # Fetch the branch
-    git fetch -v --prune -- origin "refs/heads/${BUILDKITE_BRANCH}"
+    cd "${CHECKOUT_PATH_OPTION}"
+
+    # Clean up the clone
+    git clean -ffxdq
+
+    # Checkout the branch
+    if [ "${BUILDKITE_BRANCH:-}" != "" ]; then
+      # Fetch the branch
+      git fetch "${GIT_FETCH_FLAGS}" -- origin "refs/heads/${BUILDKITE_BRANCH}"
+    fi
   fi
 
   # Checkout the correct ref to continue the build
   if [ "${BUILDKITE_COMMIT:-}" = "HEAD" ] || [ "${BUILDKITE_COMMIT}" = "" ]; then
-    git checkout -f "origin/${BUILDKITE_BRANCH}"
+    git checkout ${GIT_CHECKOUT_FLAGS} "origin/${BUILDKITE_BRANCH}"
   else
-    git checkout -f "${BUILDKITE_COMMIT}"
+    git checkout ${GIT_CHECKOUT_FLAGS} "${BUILDKITE_COMMIT}"
   fi
 fi

@@ -31,7 +31,7 @@ steps:
   - label: ":pipeline:"
     command: "buildkite-agent pipeline upload"
     plugins:
-      - git-ssh-checkout#v0.4.1:
+      - git-ssh-checkout#v0.5.0:
           ssh-secret-key-name: 'SUPER_SECRET_SSH_KEY'
 ```
 
@@ -49,7 +49,7 @@ steps:
   - label: ":hammer_and_pick: Run linter"
     command: "make lint"
     plugins: &base-plugins
-      - git-ssh-checkout#v0.4.1: &checkout-plugin
+      - git-ssh-checkout#v0.5.0: &checkout-plugin
           ssh-secret-key-name: 'SUPER_SECRET_SSH_KEY'
 
   - label: ":hammer_and_pick: Run tests"
@@ -59,7 +59,7 @@ steps:
   - label: ":docker: Build image"
     command: "make build-image"
     plugins:
-      - git-ssh-checkout#v0.4.1: *checkout-plugin
+      - git-ssh-checkout#v0.5.0: *checkout-plugin
       - ecr#v2.9.0:
           login: true
 ```
