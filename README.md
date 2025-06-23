@@ -136,10 +136,10 @@ steps:
 
 | Elastic Stack | Agent Stack K8s | Hosted (Mac) | Hosted (Linux) | Notes |
 | :-----------: | :-------------: | :----: | :----: |:---- |
-| ⚠️ | ✅ | ✅ | ✅ | **Elastic Stack**: Overrides the default checkout behaviour of the stack |
+| 📝 | ✅ | ✅ | ✅ | **Elastic Stack**: Overrides the default checkout behaviour of the stack |
 
 - ✅ Fully supported (all combinations of attributes have been tested to pass)
-- ⚠️ Requires additional config
+- 📝 Fully supported, but notable change
 
 ## ⚒ Developing
 
