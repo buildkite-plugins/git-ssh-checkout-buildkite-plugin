@@ -132,6 +132,15 @@ steps:
           ssh-secret-key-name: "REPO_B_SECRET_KEY"
 ```
 
+## Compatibility
+
+| Elastic Stack | Agent Stack K8s | Hosted (Mac) | Hosted (Linux) | Notes |
+| :-----------: | :-------------: | :----: | :----: |:---- |
+| 📝 | ✅ | ✅ | ✅ | **Elastic Stack**: Overrides the default checkout behaviour of the stack |
+
+- ✅ Fully supported (all combinations of attributes have been tested to pass)
+- 📝 Fully supported, but notable change
+
 ## ⚒ Developing
 
 You can use the [bk cli](https://github.com/buildkite/cli) to run the [pipeline](.buildkite/pipeline.yml) locally:
