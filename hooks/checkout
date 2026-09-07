@@ -19,8 +19,13 @@ echo " - ssh-secret-key-name: ${SSH_SECRET_KEY_NAME_OPTION}"
 echo " - checkout-path: ${CHECKOUT_PATH_OPTION}"
 
 if [ "${DRY_RUN}" != "true" ]; then
-  KEY_DIRECTORY=$(mktemp -d "$(cd .. && pwd)/git_ssh_checkout_plugin_ssh_key.XXXXXX")
-  KEY_NAME="${KEY_DIRECTORY}/id"
+  GIT_SSH_CHECKOUT_PLUGIN_KEY_DIRECTORY=$(mktemp -d "$(cd .. && pwd)/git_ssh_checkout_plugin_ssh_key.XXXXXX")
+  export GIT_SSH_CHECKOUT_PLUGIN_KEY_DIRECTORY
+  KEY_NAME="${GIT_SSH_CHECKOUT_PLUGIN_KEY_DIRECTORY}/id"
+  trap plugin_cleanup_ssh_key_directory_on_exit EXIT
+  trap 'plugin_cleanup_ssh_key_directory_on_signal 129' HUP
+  trap 'plugin_cleanup_ssh_key_directory_on_signal 130' INT
+  trap 'plugin_cleanup_ssh_key_directory_on_signal 143' TERM
 
   # Populate the key file from the secret value
   buildkite-agent secret get "${SSH_SECRET_KEY_NAME_OPTION}" | tr -d '\015' > "${KEY_NAME}"

@@ -74,3 +74,74 @@ function plugin_configure_ssh_command() {
   fi
   export GIT_SSH_COMMAND
 }
+
+# Removes the private key directory created by the checkout hook.
+function plugin_cleanup_ssh_key_directory() {
+  local key_directory="${GIT_SSH_CHECKOUT_PLUGIN_KEY_DIRECTORY:-}"
+
+  if [ -z "${key_directory}" ]; then
+    return 0
+  fi
+
+  case "${key_directory}" in
+    /*) ;;
+    *)
+      echo "Refusing to remove unexpected SSH key directory: ${key_directory}" >&2
+      return 1
+      ;;
+  esac
+
+  case "${key_directory}" in
+    */../*|*/..|*/./*|*/.)
+      echo "Refusing to remove unexpected SSH key directory: ${key_directory}" >&2
+      return 1
+      ;;
+  esac
+
+  case "${key_directory##*/}" in
+    git_ssh_checkout_plugin_ssh_key.?*) ;;
+    *)
+      echo "Refusing to remove unexpected SSH key directory: ${key_directory}" >&2
+      return 1
+      ;;
+  esac
+
+  if [ -L "${key_directory}" ]; then
+    echo "Refusing to remove SSH key directory symlink: ${key_directory}" >&2
+    return 1
+  fi
+
+  if [ ! -e "${key_directory}" ]; then
+    unset GIT_SSH_CHECKOUT_PLUGIN_KEY_DIRECTORY
+    return 0
+  fi
+
+  if [ ! -d "${key_directory}" ]; then
+    echo "Refusing to remove SSH key path that is not a directory: ${key_directory}" >&2
+    return 1
+  fi
+
+  rm -rf -- "${key_directory}"
+  unset GIT_SSH_CHECKOUT_PLUGIN_KEY_DIRECTORY
+}
+
+# Cleans up the private key if the checkout hook exits before completing.
+function plugin_cleanup_ssh_key_directory_on_exit() {
+  local exit_status=$?
+
+  trap - EXIT
+  if [ "${exit_status}" -ne 0 ]; then
+    plugin_cleanup_ssh_key_directory || true
+  fi
+
+  return "${exit_status}"
+}
+
+# Cleans up the private key before terminating after a cancellation signal.
+function plugin_cleanup_ssh_key_directory_on_signal() {
+  local exit_status="$1"
+
+  trap - EXIT HUP INT TERM
+  plugin_cleanup_ssh_key_directory || true
+  exit "${exit_status}"
+}
