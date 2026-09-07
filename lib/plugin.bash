@@ -60,3 +60,17 @@ function plugin_read_config() {
   local default="${2:-}"
   echo "${!var:-$default}"
 }
+
+# Configures Git to use the plugin's SSH key while preserving any existing SSH options.
+function plugin_configure_ssh_command() {
+  local key_name="$1"
+  local quoted_key_name
+
+  printf -v quoted_key_name '%q' "${key_name}"
+  if [ -n "${GIT_SSH_COMMAND:-}" ]; then
+    GIT_SSH_COMMAND="${GIT_SSH_COMMAND} -i ${quoted_key_name}"
+  else
+    GIT_SSH_COMMAND="ssh -i ${quoted_key_name} -o StrictHostKeyChecking=no"
+  fi
+  export GIT_SSH_COMMAND
+}
