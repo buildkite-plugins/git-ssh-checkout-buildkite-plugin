@@ -8,7 +8,6 @@ DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
 . "${DIR}/../lib/plugin.bash"
 
 DRY_RUN="${DRY_RUN:-}"
-KEY_NAME="../git_ssh_checkout_plugin_ssh_key"
 
 REPOSITORY_URL_OPTION=$(plugin_read_config REPOSITORY_URL "${BUILDKITE_REPO:-}")
 SSH_SECRET_KEY_NAME_OPTION=$(plugin_read_config SSH_SECRET_KEY_NAME "GIT_SSH_CHECKOUT_PLUGIN_SSH_KEY")
@@ -20,15 +19,24 @@ echo " - ssh-secret-key-name: ${SSH_SECRET_KEY_NAME_OPTION}"
 echo " - checkout-path: ${CHECKOUT_PATH_OPTION}"
 
 if [ "${DRY_RUN}" != "true" ]; then
+  GIT_SSH_CHECKOUT_PLUGIN_KEY_DIRECTORY=$(mktemp -d "$(cd .. && pwd)/git_ssh_checkout_plugin_ssh_key.XXXXXX")
+  export GIT_SSH_CHECKOUT_PLUGIN_KEY_DIRECTORY
+  KEY_NAME="${GIT_SSH_CHECKOUT_PLUGIN_KEY_DIRECTORY}/id"
+  trap plugin_cleanup_ssh_key_directory_on_exit EXIT
+  trap 'plugin_cleanup_ssh_key_directory_on_signal 129' HUP
+  trap 'plugin_cleanup_ssh_key_directory_on_signal 130' INT
+  trap 'plugin_cleanup_ssh_key_directory_on_signal 143' TERM
+
   # Populate the key file from the secret value
   buildkite-agent secret get "${SSH_SECRET_KEY_NAME_OPTION}" | tr -d '\015' > "${KEY_NAME}"
   chmod 0400 "${KEY_NAME}"
+  plugin_configure_ssh_command "${KEY_NAME}"
 
   # Clone the repository
-  git clone "${REPOSITORY_URL_OPTION}" "${CHECKOUT_PATH_OPTION}" \
-    --config core.sshCommand="ssh -i ${KEY_NAME} -o StrictHostKeyChecking=no -y"
+  git clone "${REPOSITORY_URL_OPTION}" "${CHECKOUT_PATH_OPTION}"
 
   cd "${CHECKOUT_PATH_OPTION}"
+  git config core.sshCommand "${GIT_SSH_COMMAND}"
 
   # Clean up the clone
   git clean -ffxdq
