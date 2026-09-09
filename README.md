@@ -3,7 +3,7 @@
 A Buildkite plugin for arbitrary Git SSH checkout.
 
 > [!NOTE]
-> This plugin utilises the [buildkite-agent secret](https://buildkite.com/docs/agent/v3/cli-secret) functionality for storing the SSH key that will be used for checking out the Git repository.
+> If you only need the SSH key management functionality of this plugin, there is now a native Buildkite solution for that which may be easier to use. See [SSH key from Buildkite Secrets](https://buildkite.com/docs/pipelines/configure/git-checkout#ssh-key-from-buildkite-secrets) for more information.
 
 - [Usage](#usage)
 - [Options](#options)
