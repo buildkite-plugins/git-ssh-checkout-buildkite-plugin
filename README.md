@@ -3,7 +3,7 @@
 A Buildkite plugin for arbitrary Git SSH checkout.
 
 > [!NOTE]
-> This plugin utilises the [buildkite-agent secret](https://buildkite.com/docs/agent/v3/cli-secret) functionality for storing the SSH key that will be used for checking out the Git repository.
+> If you only need the SSH key management functionality of this plugin, there is now a native Buildkite solution for that which may be easier to use. See [SSH key from Buildkite Secrets](https://buildkite.com/docs/pipelines/configure/git-checkout#ssh-key-from-buildkite-secrets) for more information.
 
 - [Usage](#usage)
 - [Options](#options)
@@ -31,7 +31,7 @@ steps:
   - label: ":pipeline:"
     command: "buildkite-agent pipeline upload"
     plugins:
-      - git-ssh-checkout#v0.4.1:
+      - git-ssh-checkout#v0.4.2:
           ssh-secret-key-name: 'SUPER_SECRET_SSH_KEY'
 ```
 
@@ -49,7 +49,7 @@ steps:
   - label: ":hammer_and_pick: Run linter"
     command: "make lint"
     plugins: &base-plugins
-      - git-ssh-checkout#v0.4.1: &checkout-plugin
+      - git-ssh-checkout#v0.4.2: &checkout-plugin
           ssh-secret-key-name: 'SUPER_SECRET_SSH_KEY'
 
   - label: ":hammer_and_pick: Run tests"
@@ -59,7 +59,7 @@ steps:
   - label: ":docker: Build image"
     command: "make build-image"
     plugins:
-      - git-ssh-checkout#v0.4.1: *checkout-plugin
+      - git-ssh-checkout#v0.4.2: *checkout-plugin
       - ecr#v2.9.0:
           login: true
 ```
